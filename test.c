@@ -404,6 +404,28 @@ static inline int64_t cmp64_v2_4_wrapper(const char *a, const char *b) {
 	return cmp64_v2_4((const uint64_t *)a, (const uint64_t *)b);
 }
 
+static inline int64_t cmp64_asm(const void *a, const void *b, uint64_t len) {
+	uint64_t tmp;
+	asm volatile("\n"
+		"1:	movq (%2),%1\n"
+		"2:	cmpq %1,(%3)\n"
+		"	jnz 3f\n"
+		"	leaq 8(%2),%2\n"
+		"	leaq 8(%3),%3\n"
+		"	subq $8,%0\n"
+		"	jnz 1b\n"
+		"3:\n"
+		: "+r" (len), "=r" (tmp), "+r" (a), "+r" (b)
+		:
+		: "cc");
+	// TODO: "memory" clobber?
+	return (int64_t)len;
+}
+
+static inline int64_t cmp64_asm_wrapper(const char *a, const char *b) {
+	return cmp64_asm(a, b, PAGE_SIZE);
+}
+
 #define test_memcmp_page(func, func_name) ({								\
 	start = clock();														\
 	for (a = aa, b = bb; a != aa + SIZE; a += PAGE_SIZE, b += PAGE_SIZE) {	\
@@ -446,6 +468,8 @@ int main() {
 	test_memcmp_page(cmp64_xxh64, "cmp64_xxh64");
 	test_memcmp_page(cmp64_v2_2_wrapper, "cmp64_v2_2");
 	test_memcmp_page(cmp64_v2_4_wrapper, "cmp64_v2_4");
+	test_memcmp_page(cmp64_asm_wrapper, "cmp64_asm");
+
 
 	return 0;
 }
