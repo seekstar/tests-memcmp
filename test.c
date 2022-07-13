@@ -197,10 +197,8 @@ static inline int64_t cmp64_8_bitwise_or_wrapper(const char *a, const char *b) {
 	return cmp64_8_bitwise_or((const uint64_t *)a, (const uint64_t *)b);
 }
 
-int fastcmp(const char *block_a, const char *block_b) {
+int memcmp_avx512(const char *block_a, const char *block_b) {
 	int ret;
-#ifdef __AVX512BW__
-	//#pragma message "fastcmp uses AVX512"
 	const __m512i *a = (const __m512i *)block_a;
 	const __m512i *b = (const __m512i *)block_b;
 	const __m512i *b_end = (const __m512i *)(block_b + BLOCK_SIZE);
@@ -217,44 +215,29 @@ int fastcmp(const char *block_a, const char *block_b) {
 		int index = __builtin_ctzll(~res);
 		ret = *((char *)a + index) - *((char *)b + index);
 	}
-#elif defined(__AVX2__)
-	#ifdef __AVX__
-		//#pragma message "fastcmp uses AVX2"
-		const __m256i *a = (const __m256i *)block_a;
-		const __m256i *b = (const __m256i *)block_b;
-		const __m256i *b_end = (const __m256i *)(block_b + BLOCK_SIZE);
-		int res;
-		for (; b < b_end; ++b, ++a) {
-			__m256i tmp;
-			tmp = _mm256_cmpeq_epi8(_mm256_loadu_si256(a), _mm256_loadu_si256(b));
-			res = _mm256_movemask_epi8(tmp);
-			if (res != ~(int)(0)) {
-				break;
-			}
-		}
-		if (b == b_end) {
-			ret = 0;
-		} else {
-			int index = __builtin_ctzll(~res);
-			ret = *((char *)a + index) - *((char *)b + index);
-		}
-	#else
-		#define RUN_TRIVIAL
-	#endif
-#else
-	#define RUN_TRIVIAL
-#endif
+	return ret;
+}
 
-#ifdef RUN_TRIVIAL
-	#pragma message "Warning: fastcmp uses trivial compare method."
-	size_t i;
-	for (i = 0; i < BLOCK_SIZE; ++i) {
-		if (block_a[i] != block_b[i]) {
+int memcmp_avx2(const char *block_a, const char *block_b) {
+	int ret;
+	const __m256i *a = (const __m256i *)block_a;
+	const __m256i *b = (const __m256i *)block_b;
+	const __m256i *b_end = (const __m256i *)(block_b + BLOCK_SIZE);
+	int res;
+	for (; b < b_end; ++b, ++a) {
+		__m256i tmp;
+		tmp = _mm256_cmpeq_epi8(_mm256_loadu_si256(a), _mm256_loadu_si256(b));
+		res = _mm256_movemask_epi8(tmp);
+		if (res != ~(int)(0)) {
 			break;
 		}
 	}
-	ret = block_a[i] - block_b[i];
-#endif
+	if (b == b_end) {
+		ret = 0;
+	} else {
+		int index = __builtin_ctzll(~res);
+		ret = *((char *)a + index) - *((char *)b + index);
+	}
 	return ret;
 }
 
@@ -459,7 +442,8 @@ int main() {
 	test_memcmp_page(cmp64_8_or_wrapper, "cmp64_8_or");
 	test_memcmp_page(cmp64_4_bitwise_or_wrapper, "cmp64_4_bitwise_or");
 	test_memcmp_page(cmp64_8_bitwise_or_wrapper, "cmp64_8_bitwise_or");
-	test_memcmp_page(fastcmp, "fastcmp");
+	test_memcmp_page(memcmp_avx512, "avx512");
+	test_memcmp_page(memcmp_avx2, "avx2");
 	test_memcmp_page(cmp64_bitwise_or_1_wrapper, "cmp64_bitwise_or_1_wrapper");
 	test_memcmp_page(cmp64_bitwise_or_2_wrapper, "cmp64_bitwise_or_2");
 	test_memcmp_page(cmp64_bitwise_or_4_wrapper, "cmp64_bitwise_or_4");
