@@ -27,6 +27,21 @@ static inline int64_t cmp64_wrapper(const char *a, const char *b) {
 	return cmp64((const uint64_t *)a, (const uint64_t *)b);
 }
 
+int64_t cmp64_xor(const uint64_t *block_a, const uint64_t *block_b) {
+	const uint64_t *b_end = block_b + BLOCK_SIZE / sizeof(block_b[0]);
+	for (; block_b < b_end; ++block_b, ++block_a) {
+		if (*block_a ^ *block_b) {
+			return *block_a - *block_b;
+		}
+	}
+	return 0;
+}
+
+static inline int64_t cmp64_xor_wrapper(const char *a, const char *b) {
+	return cmp64_xor((const uint64_t *)a, (const uint64_t *)b);
+}
+
+
 // Assume that block_a and block_b is 8 byte aligned
 uint64_t cmp64_2(const uint64_t *block_a, const uint64_t *block_b) {
 	const uint64_t *b_end = block_b + BLOCK_SIZE / sizeof(block_b[0]);
@@ -436,6 +451,7 @@ int main() {
 
 	test_memcmp_page(memcmp_page, "memcmp");
 	test_memcmp_page(cmp64_wrapper, "cmp64");
+	test_memcmp_page(cmp64_xor_wrapper, "cmp64_xor");
 	test_memcmp_page(cmp64_2_wrapper, "cmp64_2");
 	test_memcmp_page(cmp64_4_wrapper, "cmp64_4");
 	test_memcmp_page(cmp64_8_wrapper, "cmp64_8");
