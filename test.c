@@ -197,6 +197,7 @@ static inline int64_t cmp64_8_bitwise_or_wrapper(const char *a, const char *b) {
 	return cmp64_8_bitwise_or((const uint64_t *)a, (const uint64_t *)b);
 }
 
+#ifdef __AVX512F__
 int memcmp_avx512(const char *block_a, const char *block_b) {
 	int ret;
 	const __m512i *a = (const __m512i *)block_a;
@@ -217,6 +218,7 @@ int memcmp_avx512(const char *block_a, const char *block_b) {
 	}
 	return ret;
 }
+#endif
 
 int memcmp_avx2(const char *block_a, const char *block_b) {
 	int ret;
@@ -442,7 +444,9 @@ int main() {
 	test_memcmp_page(cmp64_8_or_wrapper, "cmp64_8_or");
 	test_memcmp_page(cmp64_4_bitwise_or_wrapper, "cmp64_4_bitwise_or");
 	test_memcmp_page(cmp64_8_bitwise_or_wrapper, "cmp64_8_bitwise_or");
+#ifdef __AVX512F__
 	test_memcmp_page(memcmp_avx512, "avx512");
+#endif
 	test_memcmp_page(memcmp_avx2, "avx2");
 	test_memcmp_page(cmp64_bitwise_or_1_wrapper, "cmp64_bitwise_or_1_wrapper");
 	test_memcmp_page(cmp64_bitwise_or_2_wrapper, "cmp64_bitwise_or_2");
